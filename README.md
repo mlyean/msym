@@ -1,6 +1,12 @@
-# Modular Symbols for Gamma0(N)
+# Modular Symbols for $\Gamma_0(N)$
 
-This repository contains supplemental code to my Part III essay on modular symbols.
+## Introduction
+
+This repository contains supplemental code to my Part III essay on modular symbols. It is able to compute the space of modular symbols $\mathbb{M}_k(\Gamma_0(N))$, the space of cuspidal modular symbols $\mathbb{S}_k(\Gamma_0(N))$, the Hecke action on $\mathbb{S}_k(\Gamma_0(N))$, and a basis of weight $k \ge 2$ cusp forms for $\Gamma_0(N)$.
+
+## Requirements
+
+The `sympy` package is required to run the code.
 
 ## References
 
