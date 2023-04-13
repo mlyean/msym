@@ -1,5 +1,5 @@
 from collections import defaultdict
-from sympy import factorint, gcd, gcdex, SparseMatrix, binomial, zeros, symbols, Poly, Matrix
+from sympy import factorint, gcd, gcdex, SparseMatrix, binomial, zeros, symbols, Poly, Matrix, Order
 from sympy.ntheory.modular import crt
 from bisect import bisect_left
 
@@ -18,7 +18,7 @@ class P1:
 
     def __init__(self, N):
         assert isinstance(N, int) and N >= 1
-        self._N = N
+        self.N = N
         self._gcd = [gcdex(k, N) for k in range(N)]
 
         tmp = set()
@@ -39,7 +39,7 @@ class P1:
 
     def reduce(self, p):
         # Stein, Algorithm 8.29
-        N = self._N
+        N = self.N
         u, v = p
         u %= N
         v %= N
@@ -70,8 +70,8 @@ class ModularSymbols:
     def __init__(self, k, N):
         # M_k(Gamma0(N))
         assert k >= 2 and k % 2 == 0
-        self._k = k
-        self._N = N
+        self.k = k
+        self.N = N
         self._P1N = P1(N)
         self._msym = [(i, c, d) for i in range(k - 1) for (c, d) in self._P1N]
 
@@ -120,8 +120,8 @@ class ModularSymbols:
         return len(self.free)
 
     def cuspidal_subspace(self):
-        k = self._k
-        N = self._N
+        k = self.k
+        N = self.N
         bsym = BoundarySymbols(k, N)
         boundary_map = defaultdict(int)
         for col, e in enumerate(self.free):
@@ -136,8 +136,8 @@ class ModularSymbols:
         return CuspidalModularSymbols(self, boundary_mat.nullspace())
 
     def right_action_mat(self, mat):
-        k = self._k
-        N = self._N
+        k = self.k
+        N = self.N
         ans = SparseMatrix(len(self._msym), len(self._msym), {})
         p, q, r, s = mat
         X, Y = symbols("X Y")
@@ -225,9 +225,12 @@ def cusp_forms(k, N, prec=10):
     m = ModularSymbols(k, N)
     s = m.cuspidal_subspace()
     d = s.dim()
-    mat = zeros(d**2, prec)
+    mat = zeros(d**2, prec - 1)
     for n in range(1, prec):
         mat[:, n - 1] = list(s.T_matrix(n))
     mat, piv = mat.rref()
-    mat = mat[:len(piv), :]  # Remove zero rows
-    return mat
+    q = symbols('q')
+    return [
+        sum(mat[i, n - 1] * q**n for n in range(1, prec)) + Order(q**prec)
+        for i in range(len(piv))
+    ]
