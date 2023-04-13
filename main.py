@@ -68,7 +68,7 @@ class P1:
 class ModularSymbols:
 
     def __init__(self, k, N):
-        # M_k(Gamma_0(N))
+        # M_k(Gamma0(N))
         assert k >= 2 and k % 2 == 0
         self._k = k
         self._N = N
@@ -116,6 +116,9 @@ class ModularSymbols:
         i, c, d = p
         return i * len(self._P1N) + self._P1N.index((c, d))
 
+    def dim(self):
+        return len(self.free)
+
     def cuspidal_subspace(self):
         k = self._k
         N = self._N
@@ -134,14 +137,17 @@ class ModularSymbols:
 
     def right_action_mat(self, mat):
         k = self._k
+        N = self._N
         ans = SparseMatrix(len(self._msym), len(self._msym), {})
-        p, q, r, s = list(mat)
+        p, q, r, s = mat
         X, Y = symbols("X Y")
         for i in range(k - 1):
             pol = Poly((p * X + q * Y)**i * (r * X + s * Y)**(k - 2 - i), X, Y)
             for c, d in self._P1N:
                 c1 = p * c + r * d
                 d1 = q * c + s * d
+                if gcd(c1, gcd(d1, N)) > 1:
+                    continue
                 for j in range(k - 1):
                     ans[self.index((j, c1, d1)),
                         self.index(
@@ -179,16 +185,49 @@ class BoundarySymbols:
         return len(self._list) - 1
 
 
+def merel(n):
+    # Merel, Proposition 20
+    for a in range(1, n + 2):
+        for d in range((n + a - 1) // a, n + 2 - a):
+            for c in range(d):
+                if c == 0:
+                    if a * d == n:
+                        for b in range(a):
+                            yield [a, b, c, d]
+                else:
+                    if (a * d - n) % c == 0:
+                        b = (a * d - n) // c
+                        if b < a:
+                            yield [a, b, c, d]
+
+
 class CuspidalModularSymbols:
 
     def __init__(self, parent, basis):
         self._parent = parent
-        self._basis = Matrix.hstack(*basis)
+        self._basis = Matrix.hstack(*basis).reshape(len(parent.free),
+                                                    len(basis))
 
-    def T2_matrix(self):
+    def dim(self):
+        return self._basis.cols
+
+    def T_matrix(self, n):
         parent = self._parent
         basis = self._basis
-        l = [[1, 0, 0, 2], [2, 0, 0, 1], [2, 1, 0, 1], [1, 0, 1, 2]]
-        t2 = sum(map(lambda a: parent.right_action_mat(Matrix(2, 2, a)), l),
-                 zeros(len(parent._msym), len(parent._msym)))
-        return basis.LUsolve(parent.rel_mat * t2 * parent.rel_mat_inv * basis)
+        l = merel(n)
+        t = sum(map(lambda a: parent.right_action_mat(a), l),
+                zeros(len(parent._msym), len(parent._msym)))
+        return basis.LUsolve(parent.rel_mat * t * parent.rel_mat_inv * basis)
+
+
+def cusp_forms(k, N, prec=10):
+    # Computes a basis for S_k(Gamma0(N))
+    m = ModularSymbols(k, N)
+    s = m.cuspidal_subspace()
+    d = s.dim()
+    mat = zeros(d**2, prec)
+    for n in range(1, prec):
+        mat[:, n - 1] = list(s.T_matrix(n))
+    mat, piv = mat.rref()
+    mat = mat[:len(piv), :]  # Remove zero rows
+    return mat
