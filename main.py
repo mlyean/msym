@@ -138,20 +138,18 @@ class ModularSymbols:
         free = self.free = tuple(k for k in range(ncols)
                                  if k not in piv)  # Indices of free generators
 
-        # Construct relation matrix, could be simplified
-        rel_mat = zeros(len(free), ncols)
+        # Construct relation matrix
+        self.rel_mat = zeros(len(free), ncols)
         for e, col in enumerate(piv):
-            for row in range(len(free)):
-                rel_mat[row, col] = -mat[e, free[row]]
+            for row, j in enumerate(free):
+                self.rel_mat[row, col] = -mat[e, j]
         for row, col in enumerate(free):
-            rel_mat[row, col] = 1
+            self.rel_mat[row, col] = 1
 
-        rel_mat_inv = SparseMatrix(ncols, len(free),
-                                   {(row, col): 1
-                                    for col, row in enumerate(free)})
-        # rel_mat * rel_mat_inv == I
-        self.rel_mat = rel_mat
-        self.rel_mat_inv = rel_mat_inv
+        self.rel_mat_inv = SparseMatrix(ncols, len(free),
+                                        {(row, col): 1
+                                         for col, row in enumerate(free)})
+        # self.rel_mat * self.rel_mat_inv == I
 
     def index(self, p):
         """Return the index of the Manin symbol p in the list."""
@@ -203,11 +201,11 @@ class ModularSymbols:
             for c, d in self._P1N:
                 c1 = (p * c + r * d) % N
                 d1 = (q * c + s * d) % N
-                if gcd(gcd(N, c1), gcd(N, d1)) > 1:
+                if gcd(N, gcd(c1, d1)) > 1:
                     continue
+                col = self.index((i, c, d))
                 for j in range(k - 1):
                     row = self.index((j, c1, d1))
-                    col = self.index((i, c, d))
                     ans[row, col] = sum(p1[i][u] * p2[k - 2 - i][j - u]
                                         for u in range(max(0, i + j - (k - 2)),
                                                        min(i, j) + 1))
