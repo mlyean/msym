@@ -12,6 +12,7 @@ def _gcdex(a, b):
 
 
 def gcdex(a, b):
+    """Return a tuple (x, y, g) where g = gcd(a, b) and a*x + b*y == g."""
     a0 = abs(a)
     b0 = abs(b)
     if a0 >= b0:
@@ -114,13 +115,13 @@ class ModularSymbols:
         assert k >= 2 and k % 2 == 0
         self.k = k
         self.N = N
-        self._P1N = P1(N)
-        self._msym = [(i, c, d) for i in range(k - 1) for (c, d) in self._P1N]
+        self.P1N = P1(N)
+        self.msym = [(i, c, d) for i in range(k - 1) for (c, d) in self.P1N]
 
-        ncols = len(self._msym)
+        ncols = len(self.msym)
         mat = SparseMatrix(2 * ncols, ncols, {})
 
-        for row, (i, c, d) in enumerate(self._msym):
+        for row, (i, c, d) in enumerate(self.msym):
             mat[row, self.index((i, c, d))] += 1
             mat[row, self.index((k - 2 - i, d, -c))] += (-1)**i
             mat[row + ncols, self.index((i, c, d))] += 1
@@ -149,7 +150,7 @@ class ModularSymbols:
     def index(self, p):
         """Return the index of the Manin symbol p in the list."""
         i, c, d = p
-        return i * len(self._P1N) + self._P1N.index((c, d))
+        return i * len(self.P1N) + self.P1N.index((c, d))
 
     def dim(self):
         """Return the dimension."""
@@ -162,13 +163,13 @@ class ModularSymbols:
         bsym = BoundarySymbols(self, k, N)
         boundary_map = defaultdict(int)
         for col, e in enumerate(self.free):
-            i, c, d = self._msym[e]
+            i, c, d = self.msym[e]
             a, b, g = gcdex(d, -c)
             assert g == 1
             boundary_map[(bsym.index((a, c)), col)] += 0**(k - 2 - i)
             boundary_map[(bsym.index((b, d)), col)] -= 0**i
 
-        boundary_mat = SparseMatrix(len(bsym), len(self.free), boundary_map)
+        boundary_mat = SparseMatrix(len(bsym), self.dim(), boundary_map)
 
         return CuspidalModularSymbols(self, boundary_mat.nullspace())
 
@@ -176,7 +177,7 @@ class ModularSymbols:
         """Return the matrix corresponding to the right action of mat."""
         k = self.k
         N = self.N
-        ans = SparseMatrix(len(self._msym), len(self.free), {})
+        ans = SparseMatrix(len(self.msym), self.dim(), {})
         p, q, r, s = mat
 
         # p1[i][j] is the coefficient of X^j*Y^(i-j) in (p*X+q*Y)^i
@@ -193,7 +194,7 @@ class ModularSymbols:
                 p2[i + 1][j + 1] += r * p2[i][j]
 
         for col, idx in enumerate(self.free):
-            i, c, d = self._msym[idx]
+            i, c, d = self.msym[idx]
             c1 = (p * c + r * d) % N
             d1 = (q * c + s * d) % N
             if gcd(N, gcd(c1, d1)) > 1:
