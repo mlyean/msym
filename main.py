@@ -1,5 +1,5 @@
 from collections import defaultdict
-from sympy import factorint, gcd, gcdex, SparseMatrix, binomial, zeros, symbols, Matrix, Order
+from sympy import factorint, SparseMatrix, binomial, zeros, symbols, Matrix, Order
 from sympy.ntheory.modular import crt
 from bisect import bisect_left
 
@@ -14,6 +14,41 @@ def lift_ZmodnZ_star(n, d, a):
     return int(crt([u, n], [a, 1])[0])
 
 
+gcd_memo = {}  # gcd_memo[(a, b)] = gcdex(a, b) for a >= b >= 0
+
+
+def _gcdex(a, b):
+    assert a >= b >= 0
+    if b == 0:
+        return 1, 0, a
+    if (a, b) not in gcd_memo:
+        q, r = divmod(a, b)
+        x, y, g = _gcdex(b, r)
+        gcd_memo[(a, b)] = (y, x - y * q, g)
+    return gcd_memo[(a, b)]
+
+
+def gcdex(a, b):
+    a0 = abs(a)
+    b0 = abs(b)
+    swap = b0 > a0
+    if swap:
+        a0, b0 = b0, a0
+    x, y, g = _gcdex(a0, b0)
+    if swap:
+        x, y = y, x
+    if a < 0:
+        x *= -1
+    if b < 0:
+        y *= -1
+
+    return x, y, g
+
+
+def gcd(a, b):
+    return gcdex(a, b)[2]
+
+
 class P1:
     """Projective line over Z/NZ, P^1(Z/NZ)
 
@@ -25,7 +60,6 @@ class P1:
     def __init__(self, N):
         assert isinstance(N, int) and N >= 1
         self.N = N
-        self._gcd = [gcdex(k, N) for k in range(N)]
 
         # Compute representatives
         tmp = set()
@@ -54,18 +88,17 @@ class P1:
         u %= N
         v %= N
         if u == 0:
-            if self._gcd[v][2] == 1:
+            if gcd(N, v) == 1:
                 return 0, 1
             raise ValueError
-        s, _, g = self._gcd[u]
+        _, s, g = gcdex(N, u)
         if gcd(g, v) > 1:
             raise ValueError
         s = lift_ZmodnZ_star(N, N // g, s)
         u, v = g, (s * v) % N
         if g == 1:
             return 1, v
-        v = min(
-            (v * t) % N for t in range(1, N, N // g) if self._gcd[t][2] == 1)
+        v = min((v * t) % N for t in range(1, N, N // g) if gcd(N, t) == 1)
         return g, v
 
     def index(self, p):
@@ -176,7 +209,7 @@ class ModularSymbols:
             for c, d in self._P1N:
                 c1 = (p * c + r * d) % N
                 d1 = (q * c + s * d) % N
-                if gcd(self._P1N._gcd[c1][2], self._P1N._gcd[d1][2]) > 1:
+                if gcd(gcd(N, c1), gcd(N, d1)) > 1:
                     continue
                 for j in range(k - 1):
                     ans[self.index((j, c1, d1)),
@@ -209,7 +242,7 @@ class BoundarySymbols:
         u2, v2 = q
         s1 = gcdex(u1, v1)[0]
         s2 = gcdex(u2, v2)[0]
-        return (s1 * v2 - s2 * v1) % self._parent._P1N._gcd[(v1 * v2) % self.N][2] == 0
+        return (s1 * v2 - s2 * v1) % gcd(self.N, (v1 * v2) % self.N) == 0
 
     def index(self, p):
         """Return the index of p in the list."""
