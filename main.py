@@ -146,11 +146,6 @@ class ModularSymbols:
         for row, col in enumerate(free):
             self.rel_mat[row, col] = 1
 
-        self.rel_mat_inv = SparseMatrix(ncols, len(free),
-                                        {(row, col): 1
-                                         for col, row in enumerate(free)})
-        # self.rel_mat * self.rel_mat_inv == I
-
     def index(self, p):
         """Return the index of the Manin symbol p in the list."""
         i, c, d = p
@@ -181,7 +176,7 @@ class ModularSymbols:
         """Return the matrix corresponding to the right action of mat."""
         k = self.k
         N = self.N
-        ans = SparseMatrix(len(self._msym), len(self._msym), {})
+        ans = SparseMatrix(len(self._msym), len(self.free), {})
         p, q, r, s = mat
 
         # p1[i][j] is the coefficient of X^j*Y^(i-j) in (p*X+q*Y)^i
@@ -197,19 +192,18 @@ class ModularSymbols:
                 p2[i + 1][j] += s * p2[i][j]
                 p2[i + 1][j + 1] += r * p2[i][j]
 
-        for i in range(k - 1):
-            for c, d in self._P1N:
-                c1 = (p * c + r * d) % N
-                d1 = (q * c + s * d) % N
-                if gcd(N, gcd(c1, d1)) > 1:
-                    continue
-                col = self.index((i, c, d))
-                for j in range(k - 1):
-                    row = self.index((j, c1, d1))
-                    ans[row, col] = sum(p1[i][u] * p2[k - 2 - i][j - u]
-                                        for u in range(max(0, i + j - (k - 2)),
-                                                       min(i, j) + 1))
-        return ans
+        for col, idx in enumerate(self.free):
+            i, c, d = self._msym[idx]
+            c1 = (p * c + r * d) % N
+            d1 = (q * c + s * d) % N
+            if gcd(N, gcd(c1, d1)) > 1:
+                continue
+            for j in range(k - 1):
+                row = self.index((j, c1, d1))
+                ans[row, col] = sum(p1[i][u] * p2[k - 2 - i][j - u]
+                                    for u in range(max(0, i + j - (k - 2)),
+                                                   min(i, j) + 1))
+        return self.rel_mat * ans
 
 
 class BoundarySymbols:
@@ -281,8 +275,8 @@ class CuspidalModularSymbols:
         basis = self._basis
         l = merel(n)
         t = sum(map(lambda a: parent.right_action_mat(a), l),
-                zeros(len(parent._msym), len(parent._msym)))
-        return basis.LUsolve(parent.rel_mat * t * parent.rel_mat_inv * basis)
+                zeros(len(parent.free), len(parent.free)))
+        return basis.LUsolve(t * basis)
 
 
 def cusp_forms(k, N, prec=10):
