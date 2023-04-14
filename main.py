@@ -2,29 +2,22 @@ from bisect import bisect_left
 from collections import defaultdict
 from sympy import SparseMatrix, binomial, zeros, symbols, Matrix, Order
 
-gcd_memo = {}  # gcd_memo[(a, b)] = gcdex(a, b) for a >= b >= 0
-
 
 def _gcdex(a, b):
-    assert a >= b >= 0
     if b == 0:
         return 1, 0, a
-    if (a, b) not in gcd_memo:
-        q, r = divmod(a, b)
-        x, y, g = _gcdex(b, r)
-        gcd_memo[(a, b)] = (y, x - y * q, g)
-    return gcd_memo[(a, b)]
+    q, r = divmod(a, b)
+    x, y, g = _gcdex(b, r)
+    return (y, x - y * q, g)
 
 
 def gcdex(a, b):
     a0 = abs(a)
     b0 = abs(b)
-    swap = b0 > a0
-    if swap:
-        a0, b0 = b0, a0
-    x, y, g = _gcdex(a0, b0)
-    if swap:
-        x, y = y, x
+    if a0 >= b0:
+        x, y, g = _gcdex(a0, b0)
+    else:
+        y, x, g = _gcdex(b0, a0)
     if a < 0:
         x *= -1
     if b < 0:
@@ -222,9 +215,10 @@ class ModularSymbols:
 
 
 class BoundarySymbols:
-    """Boundary symbols of weight k for Gamma0(N), B_k(Gamma0(N))."""
+    """Boundary symbols of weight k for Gamma0(N), B_k(Gamma0(N)).
 
-    # Stein, Algorithm 8.12
+    See Stein, Algorithm 8.12.
+    """
 
     def __init__(self, parent, k, N):
         self._parent = parent
