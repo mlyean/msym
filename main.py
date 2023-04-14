@@ -293,7 +293,8 @@ class CuspidalModularSymbols:
 
 
 def cusp_forms(k, N, prec=10):
-    """Compute a basis for the cusp forms of weight k level Gamma0(N) up to precision prec."""
+    """Compute a basis for the cusp forms of weight k level Gamma0(N) up to
+    the specified precision prec."""
     m = ModularSymbols(k, N)
     s = m.cuspidal_subspace()
     d = s.dim()
