@@ -1,6 +1,7 @@
 from bisect import bisect_left
 from collections import defaultdict
-from sympy import SparseMatrix, binomial, zeros, symbols, Matrix, Order
+from math import comb
+from sympy import SparseMatrix, zeros, symbols, Matrix, Order
 
 
 def _gcdex(a, b):
@@ -127,24 +128,22 @@ class ModularSymbols:
             mat[row + ncols, self.index((i, c, d))] += 1
 
             for j in range(k - 2 - i + 1):
-                mat[row + ncols, self.index(
-                    (j, d,
-                     -c - d))] += (-1)**(k - 2 + j) * binomial(k - 2 - i, j)
+                col = self.index((j, d, -c - d))
+                mat[row + ncols, col] += (-1)**(k - 2 + j) * comb(k - 2 - i, j)
             for j in range(i + 1):
-                mat[row + ncols,
-                    self.index((k - 2 - i + j, -c - d,
-                                c))] += (-1)**(k - 2 - i + j) * binomial(i, j)
+                col = self.index((k - 2 - i + j, -c - d, c))
+                mat[row + ncols, col] += (-1)**(k - 2 - i + j) * comb(i, j)
 
         mat, piv = mat.rref()
-        free = self.free = tuple(k for k in range(ncols)
-                                 if k not in piv)  # Indices of free generators
+        # Indices of free generators
+        self.free = tuple(k for k in range(ncols) if k not in piv)
 
         # Construct relation matrix
-        self.rel_mat = zeros(len(free), ncols)
+        self.rel_mat = zeros(len(self.free), ncols)
         for e, col in enumerate(piv):
-            for row, j in enumerate(free):
+            for row, j in enumerate(self.free):
                 self.rel_mat[row, col] = -mat[e, j]
-        for row, col in enumerate(free):
+        for row, col in enumerate(self.free):
             self.rel_mat[row, col] = 1
 
     def index(self, p):
@@ -244,18 +243,18 @@ class BoundarySymbols:
 
 def merel(n):
     """Compute the matrices in Merel's set X."""
-    for a in range(1, n + 2):
+    for a in range(1, n + 1):
         for d in range((n + a - 1) // a, n + 2 - a):
-            for c in range(d):
-                if c == 0:
-                    if a * d == n:
-                        for b in range(a):
-                            yield [a, b, c, d]
-                else:
-                    if (a * d - n) % c == 0:
-                        b = (a * d - n) // c
-                        if b < a:
-                            yield [a, b, c, d]
+            bc = a * d - n
+            if bc == 0:
+                for b in range(a):
+                    yield (a, b, 0, d)
+                for c in range(1, d):
+                    yield (a, 0, c, d)
+            else:
+                for b in range((bc - 1) // (d - 1) + 1, a):
+                    if bc % b == 0:
+                        yield (a, b, bc // b, d)
 
 
 class CuspidalModularSymbols:
@@ -263,8 +262,7 @@ class CuspidalModularSymbols:
 
     def __init__(self, parent, basis):
         self._parent = parent
-        self._basis = Matrix.hstack(*basis).reshape(len(parent.free),
-                                                    len(basis))
+        self._basis = Matrix.hstack(*basis).reshape(parent.dim(), len(basis))
 
     def dim(self):
         """Return the dimension."""
@@ -274,9 +272,8 @@ class CuspidalModularSymbols:
         """Return the matrix corresponding to the Hecke operator T_n."""
         parent = self._parent
         basis = self._basis
-        l = merel(n)
-        t = sum(map(lambda a: parent.right_action_mat(a), l),
-                zeros(len(parent.free), len(parent.free)))
+        t = sum((parent.right_action_mat(a) for a in merel(n)),
+                zeros(parent.dim(), parent.dim()))
         return basis.LUsolve(t * basis)
 
 
