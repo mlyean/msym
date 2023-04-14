@@ -212,10 +212,11 @@ class ModularSymbols:
                 if gcd(gcd(N, c1), gcd(N, d1)) > 1:
                     continue
                 for j in range(k - 1):
-                    ans[self.index((j, c1, d1)),
-                        self.index(
-                            (i, c, d))] = sum(p1[i][u] + p2[k - 2 - i][j - u]
-                                              for u in range(j + 1))
+                    row = self.index((j, c1, d1))
+                    col = self.index((i, c, d))
+                    ans[row, col] = sum(p1[i][u] * p2[k - 2 - i][j - u]
+                                        for u in range(max(0, i + j - (k - 2)),
+                                                       min(i, j) + 1))
         return ans
 
 
