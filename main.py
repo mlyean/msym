@@ -5,7 +5,7 @@ from bisect import bisect_left
 
 
 def lift_ZmodnZ_star(n, d, a):
-    # Given d divides n and a in (Z/dZ)^*, find a lift to (Z/nZ)^*
+    """Given a divisor d of n and a unit a modulo d, lift a to a unit modulo n."""
     u = 1
     for p in factorint(d).keys():
         while n % p == 0:
@@ -15,12 +15,19 @@ def lift_ZmodnZ_star(n, d, a):
 
 
 class P1:
+    """Projective line over Z/NZ, P^1(Z/NZ)
+
+    Compute and store a list of (inequivalent) representatives for P^1(Z/NZ).
+
+    See Stein, Algorithm 8.32.
+    """
 
     def __init__(self, N):
         assert isinstance(N, int) and N >= 1
         self.N = N
         self._gcd = [gcdex(k, N) for k in range(N)]
 
+        # Compute representatives
         tmp = set()
         for u in range(N):
             for v in range(N):
@@ -38,7 +45,10 @@ class P1:
         return self._list[i]
 
     def reduce(self, p):
-        # Stein, Algorithm 8.29
+        """Compute the canonical form of a pair p.
+
+        This is an implementation of Stein, Algorithm 8.29.
+        """
         N = self.N
         u, v = p
         u %= N
@@ -58,17 +68,21 @@ class P1:
         return g, v
 
     def index(self, p):
+        """Return the index of the pair p in the list."""
         p0 = self.reduce(p)
-        i = bisect_left(self._list, p0)
+        i = bisect_left(self._list, p0)  # Find the index by binary search
         if i != len(self._list) and self._list[i] == p0:
             return i
         raise ValueError
 
 
 class ModularSymbols:
+    """Modular symbols of weight k for Gamma0(N), M_k(Gamma0(N)).
+
+    Compute a list of Manin symbols, their relations and free generators.
+    """
 
     def __init__(self, k, N):
-        # M_k(Gamma0(N))
         assert k >= 2 and k % 2 == 0
         self.k = k
         self.N = N
@@ -113,13 +127,16 @@ class ModularSymbols:
         self.rel_mat_inv = rel_mat_inv
 
     def index(self, p):
+        """Return the index of the Manin symbol p in the list."""
         i, c, d = p
         return i * len(self._P1N) + self._P1N.index((c, d))
 
     def dim(self):
+        """Return the dimension."""
         return len(self.free)
 
     def cuspidal_subspace(self):
+        """Return the subspace of cuspidal modular symbols."""
         k = self.k
         N = self.N
         bsym = BoundarySymbols(k, N)
@@ -136,6 +153,7 @@ class ModularSymbols:
         return CuspidalModularSymbols(self, boundary_mat.nullspace())
 
     def right_action_mat(self, mat):
+        """Return the matrix corresponding to the right action of mat."""
         k = self.k
         N = self.N
         ans = SparseMatrix(len(self._msym), len(self._msym), {})
@@ -157,6 +175,8 @@ class ModularSymbols:
 
 
 class BoundarySymbols:
+    """Boundary symbols of weight k for Gamma0(N), B_k(Gamma0(N))."""
+
     # Stein, Algorithm 8.12
 
     def __init__(self, k, N):
@@ -171,6 +191,7 @@ class BoundarySymbols:
         return self._list[i]
 
     def is_equiv(self, p, q):
+        """Check if two boundary symbols are equivalent."""
         u1, v1 = p
         u2, v2 = q
         s1 = gcdex(u1, v1)[0]
@@ -178,6 +199,7 @@ class BoundarySymbols:
         return (s1 * v2 - s2 * v1) % gcd(v1 * v2, self.N) == 0
 
     def index(self, p):
+        """Return the index of p in the list."""
         for i, c in enumerate(self._list):
             if self.is_equiv(p, c):
                 return i
@@ -186,7 +208,7 @@ class BoundarySymbols:
 
 
 def merel(n):
-    # Merel, Proposition 20
+    """Compute the matrices in Merel's set X."""
     for a in range(1, n + 2):
         for d in range((n + a - 1) // a, n + 2 - a):
             for c in range(d):
@@ -202,6 +224,7 @@ def merel(n):
 
 
 class CuspidalModularSymbols:
+    """Cuspidal modular symbols of weight k for Gamma0(N), S_k(Gamma0(N))."""
 
     def __init__(self, parent, basis):
         self._parent = parent
@@ -209,9 +232,11 @@ class CuspidalModularSymbols:
                                                     len(basis))
 
     def dim(self):
+        """Return the dimension."""
         return self._basis.cols
 
     def T_matrix(self, n):
+        """Return the matrix corresponding to the Hecke operator T_n."""
         parent = self._parent
         basis = self._basis
         l = merel(n)
@@ -221,7 +246,7 @@ class CuspidalModularSymbols:
 
 
 def cusp_forms(k, N, prec=10):
-    # Computes a basis for S_k(Gamma0(N))
+    """Compute a basis for the cusp forms of weight k level Gamma0(N) up to precision prec."""
     m = ModularSymbols(k, N)
     s = m.cuspidal_subspace()
     d = s.dim()
