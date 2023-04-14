@@ -1,18 +1,6 @@
-from collections import defaultdict
-from sympy import factorint, SparseMatrix, binomial, zeros, symbols, Matrix, Order
-from sympy.ntheory.modular import crt
 from bisect import bisect_left
-
-
-def lift_ZmodnZ_star(n, d, a):
-    """Given a divisor d of n and a unit a modulo d, lift a to a unit modulo n."""
-    u = 1
-    for p in factorint(d).keys():
-        while n % p == 0:
-            u *= p
-            n //= p
-    return int(crt([u, n], [a, 1])[0])
-
+from collections import defaultdict
+from sympy import SparseMatrix, binomial, zeros, symbols, Matrix, Order
 
 gcd_memo = {}  # gcd_memo[(a, b)] = gcdex(a, b) for a >= b >= 0
 
@@ -47,6 +35,19 @@ def gcdex(a, b):
 
 def gcd(a, b):
     return gcdex(a, b)[2]
+
+
+def lift_ZmodnZ_star(n, d, a):
+    """Given a divisor d of n and a unit a modulo d, lift a to a unit modulo n."""
+    u, v = 1, n
+    while True:
+        g = gcd(v, d)
+        if g == 1:
+            break
+        u *= g
+        v //= g
+    x, y, _ = gcdex(u, v)
+    return (u * x + a * y * v) % n
 
 
 class P1:
