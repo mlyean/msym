@@ -1,5 +1,5 @@
 from collections import defaultdict
-from sympy import factorint, gcd, gcdex, SparseMatrix, binomial, zeros, symbols, Poly, Matrix, Order
+from sympy import factorint, gcd, gcdex, SparseMatrix, binomial, zeros, symbols, Matrix, Order
 from sympy.ntheory.modular import crt
 from bisect import bisect_left
 
@@ -64,7 +64,8 @@ class P1:
         u, v = g, (s * v) % N
         if g == 1:
             return 1, v
-        v = min((v * t) % N for t in range(1, N, N // g) if gcd(t, N) == 1)
+        v = min(
+            (v * t) % N for t in range(1, N, N // g) if self._gcd[t][2] == 1)
         return g, v
 
     def index(self, p):
@@ -107,7 +108,6 @@ class ModularSymbols:
                                 c))] += (-1)**(k - 2 - i + j) * binomial(i, j)
 
         mat, piv = mat.rref()
-        mat = mat[:len(piv), :]  # Remove zero rows
         free = self.free = tuple(k for k in range(ncols)
                                  if k not in piv)  # Indices of free generators
 
@@ -139,7 +139,7 @@ class ModularSymbols:
         """Return the subspace of cuspidal modular symbols."""
         k = self.k
         N = self.N
-        bsym = BoundarySymbols(k, N)
+        bsym = BoundarySymbols(self, k, N)
         boundary_map = defaultdict(int)
         for col, e in enumerate(self.free):
             i, c, d = self._msym[e]
@@ -158,19 +158,31 @@ class ModularSymbols:
         N = self.N
         ans = SparseMatrix(len(self._msym), len(self._msym), {})
         p, q, r, s = mat
-        X, Y = symbols("X Y")
+
+        # p1[i][j] is the coefficient of X^j*Y^(i-j) in (p*X+q*Y)^i
+        # p2[i][j] is the coefficient of X^j*Y^(i-j) in (r*X+s*Y)^i
+        p1 = [[0] * i for i in range(1, k)]
+        p2 = [[0] * i for i in range(1, k)]
+        p1[0][0] = 1
+        p2[0][0] = 1
+        for i in range(k - 2):
+            for j in range(i + 1):
+                p1[i + 1][j] += q * p1[i][j]
+                p1[i + 1][j + 1] += p * p1[i][j]
+                p2[i + 1][j] += s * p2[i][j]
+                p2[i + 1][j + 1] += r * p2[i][j]
+
         for i in range(k - 1):
-            pol = Poly((p * X + q * Y)**i * (r * X + s * Y)**(k - 2 - i), X, Y)
             for c, d in self._P1N:
-                c1 = p * c + r * d
-                d1 = q * c + s * d
-                if gcd(c1, gcd(d1, N)) > 1:
+                c1 = (p * c + r * d) % N
+                d1 = (q * c + s * d) % N
+                if gcd(self._P1N._gcd[c1][2], self._P1N._gcd[d1][2]) > 1:
                     continue
                 for j in range(k - 1):
                     ans[self.index((j, c1, d1)),
                         self.index(
-                            (i, c,
-                             d))] = pol.coeff_monomial(X**j * Y**(k - 2 - j))
+                            (i, c, d))] = sum(p1[i][u] + p2[k - 2 - i][j - u]
+                                              for u in range(j + 1))
         return ans
 
 
@@ -179,7 +191,8 @@ class BoundarySymbols:
 
     # Stein, Algorithm 8.12
 
-    def __init__(self, k, N):
+    def __init__(self, parent, k, N):
+        self._parent = parent
         self.k = k
         self.N = N
         self._list = []
@@ -196,7 +209,7 @@ class BoundarySymbols:
         u2, v2 = q
         s1 = gcdex(u1, v1)[0]
         s2 = gcdex(u2, v2)[0]
-        return (s1 * v2 - s2 * v1) % gcd(v1 * v2, self.N) == 0
+        return (s1 * v2 - s2 * v1) % self._parent._P1N._gcd[(v1 * v2) % self.N][2] == 0
 
     def index(self, p):
         """Return the index of p in the list."""
