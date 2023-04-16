@@ -1,31 +1,19 @@
 from bisect import bisect_left
 from collections import defaultdict
+from itertools import chain
 from math import comb
-from sympy import SparseMatrix, zeros, symbols, Matrix, Order
-
-
-def _gcdex(a, b):
-    if b == 0:
-        return 1, 0, a
-    q, r = divmod(a, b)
-    x, y, g = _gcdex(b, r)
-    return (y, x - y * q, g)
+from sympy import SparseMatrix, Matrix, Order, Poly, zeros, symbols
 
 
 def gcdex(a, b):
     """Return a tuple (x, y, g) where g = gcd(a, b) and a*x + b*y == g."""
-    a0 = abs(a)
-    b0 = abs(b)
-    if a0 >= b0:
-        x, y, g = _gcdex(a0, b0)
-    else:
-        y, x, g = _gcdex(b0, a0)
-    if a < 0:
-        x *= -1
-    if b < 0:
-        y *= -1
-
-    return x, y, g
+    if b == 0:
+        if a < 0:
+            return -1, 0, -a
+        return 1, 0, a
+    q, r = divmod(a, b)
+    x, y, g = gcdex(b, r)
+    return (y, x - y * q, g)
 
 
 def gcd(a, b):
@@ -35,12 +23,11 @@ def gcd(a, b):
 def lift_ZmodnZ_star(n, d, a):
     """Given a divisor d of n and a unit a modulo d, lift a to a unit modulo n."""
     u, v = 1, n
-    while True:
-        g = gcd(v, d)
-        if g == 1:
-            break
+    g = gcd(v, d)
+    while g > 1:
         u *= g
         v //= g
+        g = gcd(v, g)
     x, y, _ = gcdex(u, v)
     return (u * x + a * y * v) % n
 
@@ -288,7 +275,10 @@ def cusp_forms(k, N, prec=10):
         mat[:, n - 1] = list(s.T_matrix(n))
     mat, piv = mat.rref()
     q = symbols('q')
-    return [
-        sum(mat[i, n - 1] * q**n for n in range(1, prec)) + Order(q**prec)
+    basis = [
+        Poly(chain(reversed(mat[i, :]), [0]), q).as_expr() + Order(q**prec)
         for i in range(len(piv))
     ]
+    for _ in range(d // 2 - len(basis)):
+        basis.append(Order(q**prec))
+    return basis
