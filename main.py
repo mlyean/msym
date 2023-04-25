@@ -13,7 +13,7 @@ def gcdex(a, b):
         return 1, 0, a
     q, r = divmod(a, b)
     x, y, g = gcdex(b, r)
-    return (y, x - y * q, g)
+    return y, x - y * q, g
 
 
 def gcd(a, b):
@@ -94,7 +94,7 @@ class P1:
 
 
 class ModularSymbols:
-    """Modular symbols of weight k for Gamma0(N), M_k(Gamma0(N)).
+    """Modular symbols of even weight k >= 2 for Gamma0(N), M_k(Gamma0(N)).
 
     Compute a list of Manin symbols, their relations and free generators.
     """
@@ -104,7 +104,7 @@ class ModularSymbols:
         self.k = k
         self.N = N
         self.P1N = P1(N)
-        self.msym = [(i, c, d) for i in range(k - 1) for (c, d) in self.P1N]
+        self.msym = [(i, c, d) for i in range(k - 1) for c, d in self.P1N]
 
         ncols = len(self.msym)
         mat = SparseMatrix(2 * ncols, ncols, {})
@@ -194,7 +194,7 @@ class ModularSymbols:
 
 
 class BoundarySymbols:
-    """Boundary symbols of weight k for Gamma0(N), B_k(Gamma0(N)).
+    """Boundary symbols of even weight k >= 2 for Gamma0(N), B_k(Gamma0(N)).
 
     See Stein, Algorithm 8.12.
     """
@@ -235,13 +235,13 @@ def merel(n):
             bc = a * d - n
             if bc == 0:
                 for b in range(a):
-                    yield (a, b, 0, d)
+                    yield a, b, 0, d
                 for c in range(1, d):
-                    yield (a, 0, c, d)
+                    yield a, 0, c, d
             else:
                 for b in range((bc - 1) // (d - 1) + 1, a):
                     if bc % b == 0:
-                        yield (a, b, bc // b, d)
+                        yield a, b, bc // b, d
 
 
 class CuspidalModularSymbols:
@@ -265,8 +265,8 @@ class CuspidalModularSymbols:
 
 
 def cusp_forms(k, N, prec=10):
-    """Compute a basis for the cusp forms of weight k level Gamma0(N) up to
-    the specified precision prec."""
+    """Compute a basis for the cusp forms of even weight k >= 2, level Gamma0(N)
+    up to the specified precision prec."""
     m = ModularSymbols(k, N)
     s = m.cuspidal_subspace()
     d = s.dim()
