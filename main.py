@@ -272,7 +272,7 @@ def cusp_forms(k, N, prec=10):
     d = s.dim()
     mat = zeros(d**2, prec - 1)
     for n in range(1, prec):
-        mat[:, n - 1] = list(s.T_matrix(n))
+        mat[:, n - 1] = s.T_matrix(n).reshape(d**2, 1)
     mat, piv = mat.rref()
     q = symbols('q')
     basis = [
