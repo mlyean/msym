@@ -259,7 +259,7 @@ class CuspidalModularSymbols:
         """Return the matrix corresponding to the Hecke operator T_n."""
         parent = self._parent
         basis = self._basis
-        t = sum((parent.right_action_mat(a) for a in merel(n)),
+        t = sum(map(parent.right_action_mat, merel(n)),
                 zeros(parent.dim(), parent.dim()))
         return basis.LUsolve(t * basis)
 
@@ -270,10 +270,8 @@ def cusp_forms(k, N, prec=10):
     m = ModularSymbols(k, N)
     s = m.cuspidal_subspace()
     d = s.dim()
-    mat = zeros(d**2, prec - 1)
-    for n in range(1, prec):
-        mat[:, n - 1] = s.T_matrix(n).reshape(d**2, 1)
-    mat, piv = mat.rref()
+    mat, piv = Matrix.hstack(
+        *[s.T_matrix(n).reshape(d**2, 1) for n in range(1, prec)]).rref()
     q = symbols('q')
     basis = [
         Poly(chain(reversed(mat[i, :]), [0]), q).as_expr() + Order(q**prec)
