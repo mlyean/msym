@@ -217,7 +217,7 @@ class BoundarySymbols:
         u2, v2 = q
         s1 = gcdex(u1, v1)[0]
         s2 = gcdex(u2, v2)[0]
-        return (s1 * v2 - s2 * v1) % gcd(self.N, (v1 * v2) % self.N) == 0
+        return (s1 * v2 - s2 * v1) % gcd(self.N, v1 * v2) == 0
 
     def index(self, p):
         """Return the index of p in the list."""
